@@ -145,7 +145,60 @@ class MinimaxAgent(MultiAgentSearchAgent):
         Returns the total number of agents in the game
     """
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    def ghostChoise(state,depth,index):
+#        print "index",index,"depth",depth
+        if state.data._lose or state.data._win:
+            return self.evaluationFunction(state)
+        if index==(state.getNumAgents()-1):
+            if depth==1:
+                states=[state.generateSuccessor(index,action) for action in state.getLegalActions(index)]
+                states.append(state)
+                minScore=100000
+                for nextState in states:
+                    if self.evaluationFunction(nextState)<minScore:
+                        minScore=self.evaluationFunction(nextState)
+                return minScore
+            else:
+           #     print "the last node in depth",depth
+                states=[state.generateSuccessor(index,action) for action in state.getLegalActions(index)]
+                states.append(state)
+                minScore=100000
+                for nextState in states:
+                    pacmanScore=pacmanChoise(nextState,depth-1)
+                    if pacmanScore<minScore:
+                        minScore=pacmanScore
+                return minScore
+        else:
+            states=[state.generateSuccessor(index,action) for action in state.getLegalActions(index)]
+            states.append(state)
+            minScore=100000
+            for nextState in states:
+                ghostScore=ghostChoise(nextState,depth,index+1)
+                if ghostScore<minScore:
+                    minScore=ghostScore
+            return minScore
+    
+    def pacmanChoise(state,depth):
+   #     print "index 0","depth",depth
+        actions=state.getLegalActions(0)
+        actions.append(Directions.STOP)
+        maxScore=-1000000
+        if state.data._lose or state.data._win:
+            return self.evaluationFunction(state)
+        for action in actions:
+            nextState=state.generateSuccessor(0,action)
+            ghostScore=ghostChoise(nextState,depth,1)
+            if ghostScore>maxScore:
+                newAction=action
+                maxScore=ghostScore
+        if depth==self.depth:
+            return newAction,maxScore
+        else:
+            return maxScore
+    
+    action,score=pacmanChoise(gameState,self.depth)
+    print score
+    return action
 
 class AlphaBetaAgent(MultiAgentSearchAgent):
   """
@@ -156,7 +209,76 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
     """
       Returns the minimax action using self.depth and self.evaluationFunction
     """
-    "*** YOUR CODE HERE ***"
+    def ghostChoise(state,depth,index,a,b):
+#        print "index",index,"depth",depth
+        if state.data._lose or state.data._win:
+            return self.evaluationFunction(state)
+        if index==(state.getNumAgents()-1):
+            if depth==1:
+                states=[state.generateSuccessor(index,action) for action in state.getLegalActions(index)]
+                states.append(state)
+                minScore=100000
+                for nextState in states:
+                    if self.evaluationFunction(nextState)<minScore:
+                        minScore=self.evaluationFunction(nextState)
+                    if minScore<=a:
+                        return minScore
+                    if minScore<b:
+                        b=minScore
+                return minScore
+            else:
+           #     print "the last node in depth",depth
+                states=[state.generateSuccessor(index,action) for action in state.getLegalActions(index)]
+                states.append(state)
+                minScore=100000
+                for nextState in states:
+                    pacmanScore=pacmanChoise(nextState,depth-1,a,b)
+                    if pacmanScore<minScore:
+                        minScore=pacmanScore
+                    if minScore<=a:
+                        return minScore
+                    if minScore<b:
+                        b=minScore
+                return minScore
+        else:
+            states=[state.generateSuccessor(index,action) for action in state.getLegalActions(index)]
+            states.append(state)
+            minScore=100000
+            for nextState in states:
+                ghostScore=ghostChoise(nextState,depth,index+1,a,b)
+                if ghostScore<minScore:
+                    minScore=ghostScore
+                if minScore<=a:
+                    return minScore
+                if minScore<b:
+                    b=minScore
+            return minScore
+    
+    def pacmanChoise(state,depth,a,b):
+   #     print "index 0","depth",depth
+        actions=state.getLegalActions(0)
+        actions.append(Directions.STOP)
+        maxScore=-1000000
+        if state.data._lose or state.data._win:
+            return self.evaluationFunction(state)
+        for action in actions:
+            nextState=state.generateSuccessor(0,action)
+            ghostScore=ghostChoise(nextState,depth,1,a,b)
+            if ghostScore>maxScore:
+                newAction=action
+                maxScore=ghostScore
+            if maxScore>=b:
+                return maxScore
+            if maxScore>a:
+                a=maxScore
+        if depth==self.depth:
+            return newAction,maxScore
+        else:
+            return maxScore
+    
+    action,score=pacmanChoise(gameState,self.depth,-1000000,1000000)
+    print score
+    return action
     util.raiseNotDefined()
 
 class ExpectimaxAgent(MultiAgentSearchAgent):
