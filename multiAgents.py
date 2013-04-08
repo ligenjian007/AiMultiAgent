@@ -10,6 +10,8 @@ from util import manhattanDistance
 from game import Directions
 import random, util
 import math
+import searchAgents
+import search
 
 from game import Agent
 
@@ -197,7 +199,7 @@ class MinimaxAgent(MultiAgentSearchAgent):
             return maxScore
     
     action,score=pacmanChoise(gameState,self.depth)
-    print score
+#    print score
     return action
 
 class AlphaBetaAgent(MultiAgentSearchAgent):
@@ -277,9 +279,9 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
             return maxScore
     
     action,score=pacmanChoise(gameState,self.depth,-1000000,1000000)
-    print score
+ #   print score
     return action
-    util.raiseNotDefined()
+
 
 class ExpectimaxAgent(MultiAgentSearchAgent):
   """
@@ -294,17 +296,110 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
       legal moves.
     """
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    def ghostChoise(state,depth,index):
+#        print "index",index,"depth",depth
+        if state.data._lose or state.data._win:
+            return self.evaluationFunction(state)
+        if index==(state.getNumAgents()-1):
+            if depth==1:
+                states=[state.generateSuccessor(index,action) for action in state.getLegalActions(index)]
+                totalScore=0
+                for nextState in states:
+                    totalScore+=self.evaluationFunction(nextState)
+                return totalScore/len(states)
+            else:
+           #     print "the last node in depth",depth
+                states=[state.generateSuccessor(index,action) for action in state.getLegalActions(index)]
+                totalScore=0
+                for nextState in states:
+                    pacmanScore=pacmanChoise(nextState,depth-1)
+                    totalScore+=pacmanScore
+                return totalScore/len(states)
+        else:
+            states=[state.generateSuccessor(index,action) for action in state.getLegalActions(index)]
+            totalScore=0
+            for nextState in states:
+                ghostScore=ghostChoise(nextState,depth,index+1)
+                totalScore+=ghostScore
+            return totalScore/len(states)
+    
+    def pacmanChoise(state,depth):
+   #     print "index 0","depth",depth
+        actions=state.getLegalActions(0)
+        actions.append(Directions.STOP)
+        maxScore=-1000000
+        if state.data._lose or state.data._win:
+            return self.evaluationFunction(state)
+        for action in actions:
+            nextState=state.generateSuccessor(0,action)
+            ghostScore=ghostChoise(nextState,depth,1)
+            if ghostScore>maxScore:
+                newAction=action
+                maxScore=ghostScore
+        if depth==self.depth:
+            return newAction,maxScore
+        else:
+            return maxScore
+    
+    action,score=pacmanChoise(gameState,self.depth)
+#    print score
+    return action
 
 def betterEvaluationFunction(currentGameState):
-  """
+    """
     Your extreme ghost-hunting, pellet-nabbing, food-gobbling, unstoppable
     evaluation function (question 5).
 
-    DESCRIPTION: <write something here so we know what you did>
+    DESCRIPTION: 
+    there are several issues that I take into account
+    1.the shortest path to a food. I may use the greedy algorithm to search for
+      all the dots, so that the shorter pacman's distance, the higher score will
+      be. -negative -reciprocal -important
+    2.numbers of food left. I won't explain too much as it's obvious.
+      -negative -normal -in standard score
+    3.the utility caring the distance with ghost. I consider the ghost 2 grid away
+      from me is safe as I won't care too much about a ghost that can't eat pacman
+      within one or two steps, but when the ghost is two or one grid away, I may be
+      cautious for they may eat me within there ability.
+      -negative -important
+    4.if I've win or lose, it has the most weight
+      -depends -most important -in standard score
+    5.when the ghost is safe, I may not take it into account that I will keep it away
+      -depends -not so important -in standard score
+    6.states of ghost. If pacman can make the ghost into white, it may be very pleased.
+      -positive -not so important
   """
-  "*** YOUR CODE HERE ***"
-  util.raiseNotDefined()
+    if currentGameState.isWin() or currentGameState.isLose():
+        return currentGameState.getScore()
+    shortestPathProblem = searchAgents.AnyFoodSearchProblem(currentGameState)
+    shortestPathLen=len(search.bfs(shortestPathProblem)) #first parameter
+    foodLeft=currentGameState.getNumFood() #second parameter
+    ghostStates = currentGameState.getGhostStates()
+    scaredTimes = [ghostState.scaredTimer for ghostState in ghostStates]
+    position=currentGameState.getPacmanPosition()
+    ghostThreat=0 #the third parameter
+    for ghost in ghostStates:
+        if scaredTimes[ghostStates.index(ghost)]<1:
+            if util.manhattanDistance(ghost.configuration.pos,position)<=1:
+                if util.manhattanDistance(ghost.configuration.pos,position)==0:
+                    ghostThreat+=-10000
+                else:
+                    ghostThreat+=-300
+            else:
+                ghostThreat+=10.0/util.manhattanDistance(ghost.configuration.pos,position)
+        else:
+            ghostThreat+=0
+    
+    newFood=currentGameState.getFood()
+    foodAttraction=0
+    for i in range(newFood.width):
+        for j in range(newFood.height):
+            if newFood[i][j]:
+                foodAttraction+=1.0/math.pow(util.manhattanDistance((i,j), position),2)
+                
+    totalScore=currentGameState.getScore() + 10*1.0/shortestPathLen + ghostThreat + foodAttraction
+    return totalScore
+    util.raiseNotDefined()
 
 # Abbreviation
 better = betterEvaluationFunction
